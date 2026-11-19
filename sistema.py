@@ -1,0 +1,1 @@
+# Gerencia o banco de dados, as sessões e as operações

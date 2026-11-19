@@ -1,0 +1,1 @@
+# Executa consultas SELECT sobre as tabelas

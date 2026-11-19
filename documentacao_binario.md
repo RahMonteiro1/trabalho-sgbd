@@ -1,0 +1,1 @@
+<!-- Documentação da estrutura do arquivo binário. -->

@@ -1,0 +1,1 @@
+# Grava e recupera os dados em arquivos binários

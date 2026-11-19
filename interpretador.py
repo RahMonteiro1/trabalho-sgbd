@@ -1,0 +1,1 @@
+# Interpreta comandos SQL e os transforma em dicionários
