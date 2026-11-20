@@ -1,1 +1,158 @@
 # Classes que representam dados no banco
+
+tipos = {
+    "INTEGER": int,
+    "FLOAT": float,
+    "STRING": str,
+    "BOOLEAN": bool
+}
+
+permissoes = ["SELECT", "INSERT", "CREATE"]
+
+def compativel(tipo, valor):
+    if tipo not in tipos:
+        return False
+    
+    if tipo == "BOOLEAN" and isinstance(valor, bool):
+        return True
+    
+    elif tipo == "INTEGER" and isinstance(valor, int) and not isinstance(valor, bool):
+        return True
+    
+    elif tipo == "STRING" and isinstance(valor, str):
+        return True
+    
+    elif tipo == "FLOAT" and (isinstance(valor, float) or isinstance(valor, int)) and not isinstance(valor, bool):
+        return True
+    
+    else: 
+        return False
+
+class Atributo:
+    def __init__(self, nome, tipo, pk = False, fk = None):
+        self.nome = nome
+        self.tipo = tipo     
+        self.pk = pk
+        self.fk = fk  
+        
+class Tabela:
+    def __init__(self, nome, atributos):
+        self.nome = nome
+        self.atributos = atributos
+        self.registros = []
+
+        # Invalida nomes iguais
+        vistos = set()
+        for a in atributos:
+            if a.nome not in vistos:
+                vistos.add(a.nome)
+            
+            else:
+                raise ValueError("Atributos devem possuir nomes distintos")
+        
+        # Invalida tipos que não existem
+        for a in atributos:
+            if a.tipo not in tipos:
+                raise TypeError("Tipo de dado incompatível\nSão aceitos: INTEGER, FLOAT, BOOLEAN e STRING")
+        
+        # invalida se o número de PK's != 1
+        cpk = 0
+        for a in atributos:
+            if a.pk:
+                cpk += 1
+        
+        if cpk == 0:
+            raise ValueError("A tabela atual possui 0 chaves primárias")
+        
+        elif cpk > 1:
+            raise ValueError("A tabela atual possui mais de uma chave primária")
+        
+  
+    # Descobre o índice da coluna alvo
+    def indice(self, alvo):
+        for i in range(len(self.atributos)):
+            if self.atributos[i].nome == alvo:
+                return i
+                    
+        raise ValueError(f"Coluna {alvo} não encontrada")
+    
+    # Função que cria uma nova lista de valores com seus tipos corretos
+    def converter(self, valores):
+        if len(valores) != len(self.atributos):
+            raise ValueError("O número de valores a serem inseridos deve coincidir com o número de colunas na tabela")
+
+        # Testa compatibildade entre um valor e um tipo; ex: 25 sem aspas e integer
+        # À essa altura, as listas tem o mesmo tamanho, e as colunas vão ser avaliadas por ordem de inserção
+        convertidos = []
+        for i in range(len(valores)):
+            if valores[i] is None:
+                convertidos.append(valores[i])
+            
+            elif not compativel(self.atributos[i].tipo, valores[i]):
+               raise TypeError(f"Tentativa de converter {valores[i]} para {self.atributos[i].tipo}")
+            
+            else:
+                convertidos.append(tipos.get(self.atributos[i].tipo)(valores[i]))
+                
+        return convertidos
+                
+        
+    def unica_pk(self, valores):     
+        # Descobre qual o índice da coluna pk
+        ipk = None
+        for i in range(len(self.atributos)):
+            if self.atributos[i].pk:
+                ipk = i
+                break
+        
+        # Verifica nulidade
+        if valores[ipk] is None:
+            raise ValueError("A chave primária da tabela não pode ser nula")
+        
+        # percorre os registros e vê se o elemento armazenado na coluna de índice pk é igual ao valor
+        for r in self.registros:
+            if r[ipk] == valores[ipk]:
+                raise ValueError(f"{valores[ipk]} já definido na tabela")
+            
+        return True
+                         
+class Banco:
+    def __init__(self, nome):
+        self.nome = nome
+        self.tabelas = dict()
+        
+        # Ideia de estrutura do dicionário:
+        # tabelas = {
+        #     "alunos": objeto do tipo Tabela,
+        #     "disciplinas": objeto do tipo Tabela,
+        #     "matriculas": objeto do tipo Tabela
+        # }
+        
+    def criar_tabela(self, nome, atributos):
+        if nome in self.tabelas.keys():
+            raise ValueError(f"A tabela {nome} já existe")
+    
+        self.tabelas[nome] = Tabela(nome, atributos)
+        return [True]
+        
+    def inserir(self, nome_tabela, valores):
+        if nome_tabela not in self.tabelas.keys():
+            raise ValueError(f"A tabela {nome_tabela} deve existir para receber valores")
+
+        else:
+            tabela = self.tabelas.get(nome_tabela)
+            convertidos = tabela.converter(valores)
+            tabela.unica_pk(convertidos) 
+            tabela.registros.append(convertidos)
+            return [True]
+
+            
+class Usuario:
+    def __init__(self, nome, senha, admin=False):
+        self.nome = nome
+        self.senha = senha
+        self.perm_banco = dict() # universidade: select  // nomebanco: permissoes
+        self.perm_tabela = dict() # aluno: select       // nometabela : permissoes
+        
+            
+            
