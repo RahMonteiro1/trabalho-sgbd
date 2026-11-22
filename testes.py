@@ -332,5 +332,133 @@ verificar(
     [True]
 )
 
+# 21.6 - Compatibilidade entre tipos numéricos
+
+sistema_compatibilidade = Sistema()
+
+sistema_compatibilidade.login("Admin", "123456")
+sistema_compatibilidade.consulta("CREATE DATABASE compatibilidade")
+sistema_compatibilidade.consulta("USE DATABASE compatibilidade")
+
+
+# 1. INTEGER -> INTEGER: deve aceitar
+verificar(
+    "INTEGER referenciando INTEGER",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE pai_int (
+            id INTEGER PRIMARY KEY
+        )
+    """),
+    [True]
+)
+
+verificar(
+    "FK INTEGER referenciando PK INTEGER",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE filho_int (
+            id INTEGER PRIMARY KEY,
+            referencia INTEGER FOREIGN KEY REFERENCES pai_int(id)
+        )
+    """),
+    [True]
+)
+
+
+# 2. FLOAT -> FLOAT: deve aceitar
+verificar(
+    "FLOAT referenciando FLOAT",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE pai_float (
+            id FLOAT PRIMARY KEY
+        )
+    """),
+    [True]
+)
+
+verificar(
+    "FK FLOAT referenciando PK FLOAT",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE filho_float (
+            id INTEGER PRIMARY KEY,
+            referencia FLOAT FOREIGN KEY REFERENCES pai_float(id)
+        )
+    """),
+    [True]
+)
+
+
+# 3. FK FLOAT -> PK INTEGER: deve aceitar
+verificar(
+    "FK FLOAT referenciando PK INTEGER",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE filho_float_int (
+            id INTEGER PRIMARY KEY,
+            referencia FLOAT FOREIGN KEY REFERENCES pai_int(id)
+        )
+    """),
+    [True]
+)
+
+
+# 4. FK INTEGER -> PK FLOAT: deve aceitar
+verificar(
+    "FK INTEGER referenciando PK FLOAT",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE filho_int_float (
+            id INTEGER PRIMARY KEY,
+            referencia INTEGER FOREIGN KEY REFERENCES pai_float(id)
+        )
+    """),
+    [True]
+)
+
+
+# 5. STRING -> INTEGER: deve rejeitar
+verificar(
+    "FK STRING referenciando PK INTEGER",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE filho_string_int (
+            id INTEGER PRIMARY KEY,
+            referencia STRING FOREIGN KEY REFERENCES pai_int(id)
+        )
+    """),
+    [False]
+)
+
+
+# 6. INTEGER -> STRING: deve rejeitar
+verificar(
+    "FK INTEGER referenciando PK STRING",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE pai_string (
+            id STRING PRIMARY KEY
+        )
+    """),
+    [True]
+)
+
+verificar(
+    "FK INTEGER referenciando PK STRING",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE filho_int_string (
+            id INTEGER PRIMARY KEY,
+            referencia INTEGER FOREIGN KEY REFERENCES pai_string(id)
+        )
+    """),
+    [False]
+)
+
+
+# 7. BOOLEAN -> FLOAT: deve rejeitar
+verificar(
+    "FK BOOLEAN referenciando PK FLOAT",
+    sistema_compatibilidade.consulta("""
+        CREATE TABLE filho_bool_float (
+            id INTEGER PRIMARY KEY,
+            referencia BOOLEAN FOREIGN KEY REFERENCES pai_float(id)
+        )
+    """),
+    [False]
+)
 
 resumo()
