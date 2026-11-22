@@ -76,7 +76,7 @@ class Tabela:
                     
         raise ValueError(f"Coluna {alvo} não encontrada")
     
-    # Função que cria uma nova lista de valores com seus tipos corretos
+    # Cria uma nova lista de valores com seus tipos corretos
     def converter(self, valores):
         if len(valores) != len(self.atributos):
             raise ValueError("O número de valores a serem inseridos deve coincidir com o número de colunas na tabela")
@@ -133,7 +133,7 @@ class Banco:
             raise ValueError(f"A tabela {nome} já existe")
     
         self.tabelas[nome] = Tabela(nome, atributos)
-        return [True]
+        return None
         
     def inserir(self, nome_tabela, valores):
         if nome_tabela not in self.tabelas.keys():
@@ -144,7 +144,7 @@ class Banco:
             convertidos = tabela.converter(valores)
             tabela.unica_pk(convertidos) 
             tabela.registros.append(convertidos)
-            return [True]
+            return None
 
             
 class Usuario:
@@ -153,6 +153,7 @@ class Usuario:
         self.senha = senha
         self.perm_banco = dict() # universidade: select  // nomebanco: permissoes
         self.perm_tabela = dict() # aluno: select       // nometabela : permissoes
+        self.admin = admin
         
             
             
