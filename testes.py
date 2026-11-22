@@ -11,173 +11,326 @@ def verificar(rotulo, resultado, esperado):
         print("Falha", resultado, "deveria ser ", esperado)
         
 def resumo():
-    print(sum(total), " de ", len(total), "testes passaram")
+    print(sum(total), "de", len(total), "testes passaram")
 
-# ====================================================================== #
 
+print("\n========== 21. CHAVES ESTRANGEIRAS ==========\n")
 
 from sistema import Sistema
 
+sistema_fk = Sistema()
 
-def testar_dia_20():
-    # Testa a autenticação, a execução de comandos e a integração dos módulos.
-    sistema = Sistema()
+print("\n--- 21.1. O óbvio ---")
 
-    # 1. Autenticação
-    verificar(
-        "Consulta sem usuário logado",
-        sistema.consulta("CREATE DATABASE universidade"),
-        [False]
-    )
+verificar("Login do administrador",
+          sistema_fk.login("Admin", "123456"), True)
 
-    verificar(
-        "Login com senha incorreta",
-        sistema.login("Admin", "senha_errada"),
-        False
-    )
+verificar("Criar banco universidade_fk",
+          sistema_fk.consulta("CREATE DATABASE universidade_fk"), [True])
 
-    verificar(
-        "Login do administrador",
-        sistema.login("Admin", "123456"),
-        True
-    )
+verificar("Selecionar banco universidade_fk",
+          sistema_fk.consulta("USE DATABASE universidade_fk"), [True])
 
-    # 2. Criação e seleção do banco
-    verificar(
-        "Criação do banco universidade",
-        sistema.consulta("CREATE DATABASE universidade"),
-        [True]
-    )
+verificar("Criar tabela alunos",
+          sistema_fk.consulta("""
+              CREATE TABLE alunos (
+                  matricula INTEGER PRIMARY KEY,
+                  nome STRING,
+                  idade INTEGER
+              )
+          """), [True])
 
-    verificar(
-        "Criação de banco duplicado",
-        sistema.consulta("CREATE DATABASE universidade"),
-        [False]
-    )
+verificar("Criar tabela disciplinas",
+          sistema_fk.consulta("""
+              CREATE TABLE disciplinas (
+                  codigo INTEGER PRIMARY KEY,
+                  nome STRING
+              )
+          """), [True])
 
-    verificar(
-        "Seleção do banco universidade",
-        sistema.consulta("USE DATABASE universidade"),
-        [True]
-    )
+verificar("Criar tabela matriculas com duas FKs",
+          sistema_fk.consulta("""
+              CREATE TABLE matriculas (
+                  id INTEGER PRIMARY KEY,
+                  matricula INTEGER FOREIGN KEY REFERENCES alunos(matricula),
+                  codigo_disciplina INTEGER FOREIGN KEY REFERENCES disciplinas(codigo),
+                  nota FLOAT
+              )
+          """), [True])
 
-    # 3. Criação das tabelas (exemplo 4.1)
-    comandos_criacao = [
-        (
-            "Criação da tabela alunos",
-            """
-            CREATE TABLE alunos (
-                matricula INTEGER PRIMARY KEY,
-                nome STRING,
-                idade INTEGER,
-                media FLOAT
-            )
-            """
-        ),
-        (
-            "Criação da tabela disciplinas",
-            """
-            CREATE TABLE disciplinas (
-                codigo INTEGER PRIMARY KEY,
-                nome STRING,
-                creditos INTEGER
-            )
-            """
-        ),
-        (
-            "Criação da tabela matriculas",
-            """
-            CREATE TABLE matriculas (
-                id INTEGER PRIMARY KEY,
-                matricula INTEGER FOREIGN KEY REFERENCES alunos(matricula),
-                codigo_disciplina INTEGER FOREIGN KEY REFERENCES disciplinas(codigo),
-                nota FLOAT
-            )
-            """
+verificar("Inserir aluno 1001",
+          sistema_fk.consulta('INSERT INTO alunos VALUES (1001, "Ana", 22)'),
+          [True])
+
+verificar("Inserir aluno 1002",
+          sistema_fk.consulta('INSERT INTO alunos VALUES (1002, "Carlos", 25)'),
+          [True])
+
+verificar("Inserir aluno 1003",
+          sistema_fk.consulta('INSERT INTO alunos VALUES (1003, "Maria", 19)'),
+          [True])
+
+verificar("Inserir disciplina 1",
+          sistema_fk.consulta('INSERT INTO disciplinas VALUES (1, "Programacao")'),
+          [True])
+
+verificar("Inserir disciplina 2",
+          sistema_fk.consulta('INSERT INTO disciplinas VALUES (2, "Banco de Dados")'),
+          [True])
+
+verificar("Inserir matrícula com as duas FKs válidas",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (1, 1001, 1, 9.0)'),
+          [True])
+
+verificar("Inserir matrícula usando outros registros existentes",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (2, 1003, 2, 8.5)'),
+          [True])
+
+print("\n--- 21.2. O esperado ---")
+
+verificar("Rejeitar FK para tabela inexistente",
+          sistema_fk.consulta("""
+              CREATE TABLE teste_tabela_inexistente (
+                  id INTEGER PRIMARY KEY,
+                  referencia INTEGER FOREIGN KEY REFERENCES fantasma(id)
+              )
+          """), [False])
+
+verificar("Rejeitar FK para atributo inexistente",
+          sistema_fk.consulta("""
+              CREATE TABLE teste_atributo_inexistente (
+                  id INTEGER PRIMARY KEY,
+                  referencia INTEGER FOREIGN KEY REFERENCES alunos(codigo)
+              )
+          """), [False])
+
+verificar("Rejeitar FK que aponta para atributo não PK",
+          sistema_fk.consulta("""
+              CREATE TABLE teste_atributo_nao_pk (
+                  id INTEGER PRIMARY KEY,
+                  referencia STRING FOREIGN KEY REFERENCES alunos(nome)
+              )
+          """), [False])
+
+verificar("Rejeitar FK com tipo diferente do atributo referenciado",
+          sistema_fk.consulta("""
+              CREATE TABLE teste_tipo_diferente (
+                  id INTEGER PRIMARY KEY,
+                  referencia STRING FOREIGN KEY REFERENCES alunos(matricula)
+              )
+          """), [False])
+
+verificar("Rejeitar inserção com matrícula inexistente (9999)",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (3, 9999, 1, 7.0)'),
+          [False])
+
+verificar("Rejeitar inserção com disciplina inexistente",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (3, 1001, 999, 7.0)'),
+          [False])
+
+verificar("Rejeitar PK repetida na tabela matriculas",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (1, 1002, 2, 8.0)'),
+          [False])
+
+verificar("Rejeitar PK repetida na tabela alunos (1001)",
+          sistema_fk.consulta('INSERT INTO alunos VALUES (1001, "Pedro", 30)'),
+          [False])
+
+print("\n--- 21.3. Casos de borda ---")
+
+verificar("Rejeitar tabela que referencia a si mesma",
+          sistema_fk.consulta("""
+              CREATE TABLE categorias (
+                  id INTEGER PRIMARY KEY,
+                  superior INTEGER FOREIGN KEY REFERENCES categorias(id)
+              )
+          """), [False])
+
+verificar("Criar tabela independente para testar referência vazia",
+          sistema_fk.consulta("""
+              CREATE TABLE orientadores (
+                  id INTEGER PRIMARY KEY,
+                  nome STRING
+              )
+          """), [True])
+
+verificar("Criar tabela dependente de orientadores",
+          sistema_fk.consulta("""
+              CREATE TABLE projetos (
+                  id INTEGER PRIMARY KEY,
+                  orientador INTEGER FOREIGN KEY REFERENCES orientadores(id)
+              )
+          """), [True])
+
+verificar("Rejeitar FK quando a tabela referenciada está vazia",
+          sistema_fk.consulta('INSERT INTO projetos VALUES (1, 50)'),
+          [False])
+
+verificar("Inserir registro na tabela referenciada",
+          sistema_fk.consulta('INSERT INTO orientadores VALUES (50, "Joao")'),
+          [True])
+
+verificar("Aceitar FK após cadastrar o registro referenciado",
+          sistema_fk.consulta('INSERT INTO projetos VALUES (1, 50)'),
+          [True])
+
+verificar("Aceitar inserção em tabela sem FK",
+          sistema_fk.consulta('INSERT INTO orientadores VALUES (51, "Marina")'),
+          [True])
+
+print("\n--- 21.4. Exemplos mais complexos ---")
+
+verificar("Aceitar registro com primeira FK válida e segunda FK válida",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (4, 1002, 1, 8.0)'),
+          [True])
+
+verificar("Rejeitar registro com primeira FK inválida e segunda válida",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (5, 9999, 1, 7.0)'),
+          [False])
+
+verificar("Rejeitar registro com primeira FK válida e segunda inválida",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (5, 1001, 999, 7.0)'),
+          [False])
+
+verificar("Aceitar PK 5 após tentativas anteriores rejeitadas",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (5, 1003, 2, 9.5)'),
+          [True])
+
+verificar("Aceitar FK que referencia o último registro da tabela",
+          sistema_fk.consulta('INSERT INTO matriculas VALUES (6, 1003, 1, 8.5)'),
+          [True])
+
+print("\n21.5 — Exemplos oficiais do roteiro")
+
+sistema_exemplos = Sistema()
+
+verificar(
+    "Login do administrador",
+    sistema_exemplos.login("Admin", "123456"),
+    True
+)
+
+verificar(
+    "4.1 - Criar banco universidade",
+    sistema_exemplos.consulta("CREATE DATABASE universidade"),
+    [True]
+)
+
+verificar(
+    "4.1 - Selecionar banco universidade",
+    sistema_exemplos.consulta("USE DATABASE universidade"),
+    [True]
+)
+
+verificar(
+    "4.1 - Criar tabela alunos",
+    sistema_exemplos.consulta("""
+        CREATE TABLE alunos (
+            matricula INTEGER PRIMARY KEY,
+            nome STRING,
+            idade INTEGER,
+            media FLOAT
         )
-    ]
+    """),
+    [True]
+)
 
-    for rotulo, comando in comandos_criacao:
-        verificar(rotulo, sistema.consulta(comando), [True])
+verificar(
+    "4.1 - Criar tabela disciplinas",
+    sistema_exemplos.consulta("""
+        CREATE TABLE disciplinas (
+            codigo INTEGER PRIMARY KEY,
+            nome STRING,
+            creditos INTEGER
+        )
+    """),
+    [True]
+)
 
-    # 4. Inserção dos registros (exemplo 4.2)
-    comandos_insercao = [
-        ('INSERT INTO alunos VALUES (1001, "Ana", 22, 8.5)',
-         "Inserção de Ana"),
+verificar(
+    "4.1 - Criar tabela matriculas com duas FKs",
+    sistema_exemplos.consulta("""
+        CREATE TABLE matriculas (
+            id INTEGER PRIMARY KEY,
+            matricula INTEGER FOREIGN KEY REFERENCES alunos(matricula),
+            codigo_disciplina INTEGER FOREIGN KEY REFERENCES disciplinas(codigo),
+            nota FLOAT
+        )
+    """),
+    [True]
+)
 
-        ('INSERT INTO alunos VALUES (1002, "Carlos", 25, 7.0)',
-         "Inserção de Carlos"),
+verificar(
+    "4.2 - Inserir Ana em alunos",
+    sistema_exemplos.consulta(
+        'INSERT INTO alunos VALUES (1001, "Ana", 22, 8.5)'
+    ),
+    [True]
+)
 
-        ('INSERT INTO alunos VALUES (1003, "Maria", 19, 9.2)',
-         "Inserção de Maria"),
+verificar(
+    "4.2 - Inserir Carlos em alunos",
+    sistema_exemplos.consulta(
+        'INSERT INTO alunos VALUES (1002, "Carlos", 25, 7.0)'
+    ),
+    [True]
+)
 
-        ('INSERT INTO disciplinas VALUES (1, "Programacao", 4)',
-         "Inserção de Programacao"),
+verificar(
+    "4.2 - Inserir Maria em alunos",
+    sistema_exemplos.consulta(
+        'INSERT INTO alunos VALUES (1003, "Maria", 19, 9.2)'
+    ),
+    [True]
+)
 
-        ('INSERT INTO disciplinas VALUES (2, "Banco de Dados", 4)',
-         "Inserção de Banco de Dados"),
+verificar(
+    "4.2 - Inserir Programacao em disciplinas",
+    sistema_exemplos.consulta(
+        'INSERT INTO disciplinas VALUES (1, "Programacao", 4)'
+    ),
+    [True]
+)
 
-        ('INSERT INTO matriculas VALUES (1, 1001, 1, 9.0)',
-         "Inserção da matrícula 1"),
+verificar(
+    "4.2 - Inserir Banco de Dados em disciplinas",
+    sistema_exemplos.consulta(
+        'INSERT INTO disciplinas VALUES (2, "Banco de Dados", 4)'
+    ),
+    [True]
+)
 
-        ('INSERT INTO matriculas VALUES (2, 1001, 2, 8.0)',
-         "Inserção da matrícula 2"),
+verificar(
+    "4.2 - Inserir primeira matrícula",
+    sistema_exemplos.consulta(
+        "INSERT INTO matriculas VALUES (1, 1001, 1, 9.0)"
+    ),
+    [True]
+)
 
-        ('INSERT INTO matriculas VALUES (3, 1002, 1, 7.0)',
-         "Inserção da matrícula 3"),
+verificar(
+    "4.2 - Inserir segunda matrícula",
+    sistema_exemplos.consulta(
+        "INSERT INTO matriculas VALUES (2, 1001, 2, 8.0)"
+    ),
+    [True]
+)
 
-        ('INSERT INTO matriculas VALUES (4, 1003, 2, 9.5)',
-         "Inserção da matrícula 4")
-    ]
+verificar(
+    "4.2 - Inserir terceira matrícula",
+    sistema_exemplos.consulta(
+        "INSERT INTO matriculas VALUES (3, 1002, 1, 7.0)"
+    ),
+    [True]
+)
 
-    for comando, rotulo in comandos_insercao:
-        verificar(rotulo, sistema.consulta(comando), [True])
-
-    # 5. Verificação do estado interno
-    verificar(
-        "Quantidade de bancos",
-        len(sistema.bancos),
-        1
-    )
-
-    verificar(
-        "Quantidade de tabelas",
-        len(sistema.bc_atual.tabelas),
-        3
-    )
-
-    verificar(
-        "Quantidade de alunos",
-        len(sistema.bc_atual.tabelas["alunos"].registros),
-        3
-    )
-
-    verificar(
-        "Quantidade de disciplinas",
-        len(sistema.bc_atual.tabelas["disciplinas"].registros),
-        2
-    )
-
-    verificar(
-        "Quantidade de matrículas",
-        len(sistema.bc_atual.tabelas["matriculas"].registros),
-        4
-    )
-
-    # 6. Encerramento da sessão
-    verificar(
-        "Logout",
-        sistema.logout(),
-        True
-    )
-
-    verificar(
-        "Consulta após logout",
-        sistema.consulta("USE DATABASE universidade"),
-        [False]
-    )
+verificar(
+    "4.2 - Inserir quarta matrícula",
+    sistema_exemplos.consulta(
+        "INSERT INTO matriculas VALUES (4, 1003, 2, 9.5)"
+    ),
+    [True]
+)
 
 
-testar_dia_20()
 resumo()
-

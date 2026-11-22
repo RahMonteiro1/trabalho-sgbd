@@ -94,8 +94,7 @@ class Tabela:
             else:
                 convertidos.append(tipos.get(self.atributos[i].tipo)(valores[i]))
                 
-        return convertidos
-                
+        return convertidos           
         
     def unica_pk(self, valores):     
         # Descobre qual o índice da coluna pk
@@ -113,8 +112,20 @@ class Tabela:
         for r in self.registros:
             if r[ipk] == valores[ipk]:
                 raise ValueError(f"{valores[ipk]} já definido na tabela")
-            
-        return True
+    
+    def existe_pk(self, valor):
+        # Descobre qual o índice da coluna pk
+        ipk = None
+        for i in range(len(self.atributos)):
+            if self.atributos[i].pk:
+                ipk = i
+                break
+        
+        for reg in self.registros:
+            if reg[ipk] == valor:
+                return True
+        
+        return False
                          
 class Banco:
     def __init__(self, nome):
@@ -124,29 +135,65 @@ class Banco:
         # Ideia de estrutura do dicionário:
         # tabelas = {
         #     "alunos": objeto do tipo Tabela,
-        #     "disciplinas": objeto do tipo Tabela,
-        #     "matriculas": objeto do tipo Tabela
+        #     "disciplinas": objeto do tipo Tabela
         # }
         
     def criar_tabela(self, nome, atributos):
         if nome in self.tabelas.keys():
             raise ValueError(f"A tabela {nome} já existe")
-    
+        
+        # verificar fk
+        for a in atributos:
+            achou = False
+            if a.fk is not None:
+                ntref = a.fk[0] # Nome da Tabela REFerenciada 
+                naref = a.fk[1] # Nome do Atributo REFerenciado
+                
+                if ntref not in self.tabelas:
+                    raise ValueError("Chave estrangeira não referencia uma tabela existente")
+                
+                else:
+                    tref = self.tabelas[ntref] # objeto Tabela REFerenciada
+                    
+                    for at in tref.atributos: # at = ATributo
+                        if at.nome == naref:
+                            aref = at # objeto Atributo REFerenciado
+                            achou = True
+                            
+                            if not aref.pk:
+                                raise ValueError("A chave estrangeira deve referenciar uma chave primária de outra tabela")
+
+                            if aref.tipo != a.tipo:
+                                raise ValueError("Os atributos devem possuir o mesmo tipo")
+        
+                    if not achou:
+                        raise ValueError("O atributo referenciado pela chave estrangeira não existe")
+        
         self.tabelas[nome] = Tabela(nome, atributos)
         return None
-        
+                
     def inserir(self, nome_tabela, valores):
-        if nome_tabela not in self.tabelas.keys():
+        if nome_tabela not in self.tabelas:
             raise ValueError(f"A tabela {nome_tabela} deve existir para receber valores")
 
         else:
             tabela = self.tabelas.get(nome_tabela)
             convertidos = tabela.converter(valores)
-            tabela.unica_pk(convertidos) 
+            tabela.unica_pk(convertidos)
+            
+            # Verifica se o valor da fk existe na tabela referenciada
+            for atr in tabela.atributos:
+                if atr.fk is not None:
+                    ntref = atr.fk[0] # Nome da Tabela REFerenciada
+                    tref = self.tabelas[ntref] # objeto Tabela REFerenciada
+                    ifk = tabela.indice(atr.nome) 
+                    
+                    if not tref.existe_pk(convertidos[ifk]):
+                        raise ValueError(f"Chave estrangeira {convertidos[ifk]} não encontrada na tabela {ntref}")
+            
             tabela.registros.append(convertidos)
             return None
 
-            
 class Usuario:
     def __init__(self, nome, senha, admin=False):
         self.nome = nome
