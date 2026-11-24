@@ -68,6 +68,7 @@ class Sistema:
         
         else:
             self.us_atual = None
+            self.bc_atual = None
             return True
 
     def salvar(self, path): # path = caminho dos arquivos
