@@ -2,6 +2,7 @@
 
 from modelos import *
 from interpretador import interpretar
+from motor_selects import executar_select
 
 class Sistema:
     def __init__(self):
@@ -31,6 +32,9 @@ class Sistema:
                     
                     elif cmd["op"] == "INSERT":
                         resultado = self.inserir(cmd)
+                        
+                    elif cmd["op"] == "SELECT":
+                        resultado = self.selecionar(cmd)
                         
                     else:
                         raise ValueError(f"Comando {cmd} não reconhecido") #esse erro cai no próprio catch
@@ -114,6 +118,10 @@ class Sistema:
         self.exigir_banco()
         
         self.bc_atual.inserir(cmd["tabela"], cmd["valores"])
+ 
+    def selecionar(self, cmd):
+        self.exigir_banco()
+        return executar_select(cmd, self.bc_atual.tabelas)
     
     def exigir_adm(self):
         if self.us_atual is not None:

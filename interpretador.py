@@ -591,7 +591,26 @@ def ler_where(tks):
     return where
 
 def interpretar_select(tokens):
-    # Usa das funções auiliares acima para transformar uma lista de tokens em um dicionário
+    # Usa das funções auiliares acima para transformar uma lista de tokens em um dicionáriodo tipo:
+    # {
+    # "op": "SELECT",
+    # "colunas": [
+    #     {"tipo": "atb", "nome": "nome"},
+    #     {"tipo": "atb", "nome": "idade"}
+    # ],
+    # "tabelas": ["alunos"],
+    # "where": [
+    #     [
+    #         {
+    #             "esq": {"tipo": "atb", "nome": "idade"},
+    #             "op": ">",
+    #             "dir": {"tipo": "const", "valor": 18}
+    #         }
+    #     ]
+    # ],
+    # "group_by": None
+    # }
+    
     esperar(tokens, "SELECT")
     cmd = {"op": "SELECT", "colunas": listar_itens(tokens), "tabelas": [], "where": [], "group_by": None}
 

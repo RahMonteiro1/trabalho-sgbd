@@ -163,9 +163,7 @@ class Banco:
                             if not aref.pk:
                                 raise ValueError("A chave estrangeira deve referenciar uma chave primária de outra tabela")
 
-                            tipos_numericos = ("INTEGER", "FLOAT")
-
-                            if (aref.tipo != a.tipo) and not ((aref.tipo in tipos_numericos) and (a.tipo in tipos_numericos)):
+                            if aref.tipo != a.tipo:
                                 raise ValueError("Os atributos possuem tipos incompatíveis")
         
                     if not achou:

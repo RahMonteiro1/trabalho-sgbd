@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+testes_temp.py
 
 # Ambientes virtuais
 venv/
