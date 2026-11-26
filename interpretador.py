@@ -14,7 +14,7 @@ def e_numero(x):
     return x.isdigit()
 
 def separar_tokens(texto):
-    # Função principal do tokenizador. Lê um texto (comando) e devolve uma  lista de tuplas, na qual cada um representa um token  
+    # Função principal do tokenizador. Lê um texto (comando) e devolve uma lista de tuplas, na qual cada um representa um token  
     # Forma: ("tipo", "expressão") -> ("SIM", ","); ("PAL", "alunos")
     tokens = list()
     atual = ""
@@ -412,15 +412,21 @@ def interpretar(comando):
         elif p[1].upper() == "SELECT":
             return interpretar_select(tokens)
             
-        elif p[1].upper() == "CREATE":
+        elif p[1].upper() == "GRANT":
+            return interpretar_grant(tokens)
+        
+        elif p[1].upper() == "REVOKE":
+            return interpretar_revoke(tokens)
+        
+        elif p[1].upper() == "SHOW":
             try:
                 s = tokens[1]
                 if (s is not None) and (s[0] == "PAL"):
-                    if s[1].upper() == "TABLE":
-                        return interpretar_create_table(tokens)
+                    if s[1].upper() == "USERS":
+                        return interpretar_show_users(tokens)
                     
-                    elif s[1].upper() == "DATABASE":
-                        return interpretar_create_database(tokens)
+                    elif s[1].upper() == "PERMISSIONS":
+                        return interpretar_show_permissions(tokens)
                         
                     else:
                         raise ValueError("Comando não reconhecido")
@@ -430,7 +436,29 @@ def interpretar(comando):
             
             except IndexError:
                 raise ValueError("Comando incompleto")
-               
+                     
+        elif p[1].upper() == "CREATE":
+            try:
+                s = tokens[1]
+                if (s is not None) and (s[0] == "PAL"):
+                    if s[1].upper() == "TABLE":
+                        return interpretar_create_table(tokens)
+                    
+                    elif s[1].upper() == "DATABASE":
+                        return interpretar_create_database(tokens)
+                    
+                    elif s[1].upper() == "USER":
+                        return interpretar_create_user(tokens)
+                        
+                    else:
+                        raise ValueError("Comando não reconhecido")
+                
+                else:
+                    raise ValueError("Tipo inadequado para comando")
+            
+            except IndexError:
+                raise ValueError("Comando incompleto")
+
         else:
             raise ValueError("Comando não reconhecido")
     
@@ -632,3 +660,192 @@ def interpretar_select(tokens):
         raise ValueError("Excesso de termos")
 
     return cmd
+
+def interpretar_create_user(tokens):
+    # Lê uma lista de tokens e devolve um dicionário na forma
+    # {
+    #  "op": "CREATE_USER"
+    #   "nome": nomeusuario
+    #   "senha": senhausuario
+    # }
+    comandos = dict()
+    
+    esperar(tokens, "CREATE")
+    esperar(tokens, "USER")        
+    comandos["op"] = "CREATE_USER"
+    
+    if olhar(tokens) is not None:
+        a = proximo(tokens)
+        if (a[0] == "PAL"):
+            validar_identificador(a[1])
+            comandos["nome"] = a[1]
+                        
+            esperar(tokens, "IDENTIFIED")
+            esperar(tokens, "BY")
+            
+            if olhar(tokens) is not None:
+                b = proximo(tokens)
+                if b[0] == "STR":
+                    comandos["senha"] = b[1]
+                    
+                    if olhar(tokens) is None:
+                        return comandos
+                    
+                    else:
+                        raise ValueError("Excesso de parâmetros para a criação do usuário")
+                
+                else:
+                    raise ValueError("A senha deve ser uma String")
+            
+            else:
+                raise ValueError("Parâmetros insuficientes para a criação do usuário")
+                
+        else:
+            raise ValueError("Nome do usuário em formato inválido")
+        
+    else:
+        raise ValueError("Parâmetros insuficientes para a criação do usuário")
+    
+def interpretar_grant(tokens):
+    validas = {"INSERT", "SELECT", "CREATE", "ALL"}
+    comandos = dict()
+    
+    esperar(tokens, "GRANT")
+    comandos["op"] = "GRANT"
+    
+    perm = proximo(tokens)
+    
+    if (perm[0] != "PAL") or (perm[1].upper() not in validas):
+        raise ValueError("Permissão inválida")
+    
+    else:
+        comandos["perm"] =  perm[1].upper()
+    
+    esperar(tokens, "ON")
+    
+    bc = proximo(tokens)
+    if bc[0] != "PAL":
+        raise ValueError("Nome do banco em formato inválido")
+    
+    validar_identificador(bc[1])
+    comandos["banco"] = bc[1]
+
+    tabela = None
+    if olhar(tokens) == ("SIM", "."):
+        proximo(tokens)
+        
+        ttab = proximo(tokens)
+        if ttab[0] != "PAL":
+            raise ValueError("Nome da tabela em formato inválido")
+        
+        if comandos["perm"] == "CREATE":
+            raise ValueError("Permissão CREATE inválida para tabelas")
+        
+        validar_identificador(ttab[1])
+        tabela = ttab[1]
+        
+    comandos["tabela"] = tabela
+
+    esperar(tokens, "TO")
+    
+    us = proximo(tokens)
+    if us[0] != "PAL":
+        raise ValueError("Sintaxe incorreta para o nome do usuário")
+    
+    validar_identificador(us[1])
+    comandos["usuario"] = us[1]
+
+    if olhar(tokens) is not None:
+        raise ValueError("Excesso de parâmetros para a concessão de permissão")
+
+    return comandos
+    
+def interpretar_revoke(tokens):
+    validas = {"INSERT", "SELECT", "CREATE", "ALL"}
+    comandos = dict()
+    
+    esperar(tokens, "REVOKE")
+    comandos["op"] = "REVOKE"
+    
+    perm = proximo(tokens)
+    
+    if (perm[0] != "PAL") or (perm[1].upper() not in validas):
+        raise ValueError("Permissão inválida")
+    
+    else:
+        comandos["perm"] =  perm[1].upper()
+    
+    esperar(tokens, "ON")
+    
+    bc = proximo(tokens)
+    if bc[0] != "PAL":
+        raise ValueError("Nome do banco em formato inválido")
+    
+    validar_identificador(bc[1])
+    comandos["banco"] = bc[1]
+
+    tabela = None
+    if olhar(tokens) == ("SIM", "."):
+        proximo(tokens)
+        
+        ttab = proximo(tokens)
+        if ttab[0] != "PAL":
+            raise ValueError("Nome da tabela em formato inválido")
+        
+        if comandos["perm"] == "CREATE":
+            raise ValueError("Permissão CREATE inválida para tabelas")
+        
+        validar_identificador(ttab[1])
+        tabela = ttab[1]
+        
+    comandos["tabela"] = tabela
+
+    esperar(tokens, "FROM")
+    
+    us = proximo(tokens)
+    if us[0] != "PAL":
+        raise ValueError("Sintaxe incorreta para o nome do usuário")
+    
+    validar_identificador(us[1])
+    comandos["usuario"] = us[1]
+
+    if olhar(tokens) is not None:
+        raise ValueError("Excesso de parâmetros para a remoção de permissão")
+
+    return comandos
+    
+def interpretar_show_users(tokens):
+    comandos = dict()
+    
+    esperar(tokens, "SHOW")
+    esperar(tokens, "USERS") 
+    comandos["op"] = "SHOW_USERS"
+    
+    if olhar(tokens) is not None:
+        raise ValueError("Excesso de parâmetros para exibir usuários")
+        
+    return comandos
+
+def interpretar_show_permissions(tokens):
+    comandos = dict()
+    
+    esperar(tokens, "SHOW")
+    esperar(tokens, "PERMISSIONS")
+    comandos["op"] = "SHOW_PERMISSIONS"
+    
+    if olhar(tokens) is not None:
+        n = proximo(tokens)
+        
+        if n[0] != "PAL":
+            raise ValueError("Sintaxe incorreta no nome do usuário")
+        
+        validar_identificador(n[1])
+        comandos["usuario"] = n[1]
+        
+        if olhar(tokens) is not None:
+            raise ValueError("Excesso de parâmetros para exibição de permissões")
+        
+    else: 
+        raise ValueError("Parâmetros insuficientes para exibição de permissões")
+        
+    return comandos

@@ -36,6 +36,21 @@ class Sistema:
                     elif cmd["op"] == "SELECT":
                         resultado = self.selecionar(cmd)
                         
+                    elif cmd["op"] == "CREATE_USER":
+                        resultado = self.criar_usuario(cmd)
+                        
+                    elif cmd["op"] == "GRANT":
+                        resultado = self.conceder(cmd)
+                    
+                    elif cmd["op"] == "REVOKE":
+                        resultado = self.revogar(cmd)
+                        
+                    elif cmd["op"] == "SHOW_USERS":
+                        resultado = self.mostrar_usuarios()
+                        
+                    elif cmd["op"] == "SHOW_PERMISSIONS":
+                        resultado = self.mostrar_permissoes(cmd)
+                        
                     else:
                         raise ValueError(f"Comando {cmd} não reconhecido") #esse erro cai no próprio catch
                     
@@ -141,6 +156,106 @@ class Sistema:
         else:
             raise ValueError("Nenhum banco de dados selecionado")
     
+    def criar_usuario(self, cmd):
+    # Lê um dicionário da forma abaixo e cria o usuário, de for possível
+    # {
+    #   'op': 'CREATE_USER',
+    #   'nome': 'professor',
+    #   'senha': 'senha_professor'
+    # }
+    
+        self.exigir_adm()
+        nome = cmd["nome"]
+        senha = cmd["senha"]
+        
+        if nome in self.usuarios:
+            raise ValueError("Usuário já existe")
+        
+        elif not senha:
+            raise ValueError("Campo 'senha' está vazio")
+        
+        else:
+            self.usuarios[nome] = Usuario(nome, senha, False)
+            
+    def conceder(self, cmd):
+        self.exigir_adm()
+
+        perm = cmd["perm"].upper()
+        bc = cmd["banco"]
+        tb = cmd["tabela"]
+        us = cmd["usuario"]
+        
+        if us not in self.usuarios:
+            raise ValueError("Usuário inexistente")
+        
+        if bc not in self.bancos:
+            raise ValueError("Banco inexistente")
+        
+        if tb is not None:
+            if tb not in self.bancos[bc].tabelas:
+                raise ValueError("Tabela inexistente")
+            
+            if perm == "CREATE":
+                raise ValueError("Operação inválida para tabelas")
+            
+            self.usuarios[us].conceder(bc, tb, perm)
+                
+        else:
+            self.usuarios[us].conceder(bc, None, perm)
+            
+    def revogar(self, cmd):
+            self.exigir_adm()
+    
+            perm = cmd["perm"].upper()
+            bc = cmd["banco"]
+            tb = cmd["tabela"]
+            us = cmd["usuario"]
+            
+            if us not in self.usuarios:
+                raise ValueError("Usuário inexistente")
+            
+            if bc not in self.bancos:
+                raise ValueError("Banco inexistente")
+            
+            if tb is not None:
+                if tb not in self.bancos[bc].tabelas:
+                    raise ValueError("Tabela inexistente")  
+            
+            self.usuarios[us].revogar(bc, tb, perm)
+                    
+    def mostrar_usuarios(self):
+        self.exigir_adm()
+        
+        saida = list()
+        for c in self.usuarios:
+            if self.usuarios[c].admin:
+                saida.append((c, "admin")) 
+            
+            else:
+                saida.append((c, "comum"))
+                    
+        return saida
+    
+    def mostrar_permissoes(self, cmd):
+        self.exigir_adm()
+        
+        saida = list()
+        try:
+            us = self.usuarios[cmd["usuario"]]
+        
+        except KeyError:
+            raise ValueError("O usuário informado não existe")
+        
+        for c in us.perm_banco:
+            for p in us.perm_banco[c]:
+                saida.append((c, "*", p))
+            
+        for c in us.perm_tabela:
+            partes = c.split(".")
+            for p in us.perm_tabela[c]:
+                saida.append((partes[0], partes[1], p))
+    
+        return saida  
+        
     def autorizar(self, banco, tabela, perm): # perm = PERMissão
         pass
-    

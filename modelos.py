@@ -202,5 +202,109 @@ class Usuario:
         self.perm_tabela = dict() # aluno: select       // nometabela : permissoes
         self.admin = admin
         
+    def conceder(self, banco, tabela, perm): # tabela: nome da tabela ou None, caso seja para o banco inteiro
+        perm = perm.upper()
+        todos = False
+        if perm == "ALL":
+            todos = True
+        
+        if not todos and (perm not in permissoes):
+            raise ValueError("Permissão inválida")
+        
+        else:
+            if tabela is None:                
+                if not todos and banco not in self.perm_banco:
+                    self.perm_banco[banco] = [perm]
+                
+                elif not todos and perm not in self.perm_banco[banco]:
+                    self.perm_banco[banco].append(perm)
+                    
+                elif todos:
+                    self.perm_banco[banco] = ["SELECT", "INSERT", "CREATE"]
+                
+            else:
+                ch = banco + "." + tabela
+                if not todos and ch not in self.perm_tabela:
+                    self.perm_tabela[ch] = [perm]
+                    
+                elif not todos and perm not in self.perm_tabela[ch]:
+                    self.perm_tabela[ch].append(perm)
+                
+                elif todos:
+                    self.perm_tabela[ch] = ["SELECT", "INSERT"]
             
+    def revogar(self, banco, tabela, perm):
+        perm = perm.upper()
+        todos = False
+        if perm == "ALL":
+            todos = True
+        
+        if not todos and (perm not in permissoes):
+            raise ValueError("Permissão inválida")
+        
+        else:
+            if tabela is None:
+                if banco not in self.perm_banco:
+                    pass
+                                
+                elif not todos and perm in self.perm_banco[banco]:
+                    self.perm_banco[banco].remove(perm)
+                    
+                    if len(self.perm_banco[banco]) == 0:
+                        del self.perm_banco[banco]    
+                    
+                elif todos:
+                    del self.perm_banco[banco]
+                
+            else:
+                ch = banco + "." + tabela
+                if ch not in self.perm_tabela:
+                    pass
+                
+                elif not todos and perm in self.perm_tabela[ch]:
+                    self.perm_tabela[ch].remove(perm)
+                    
+                    if len(self.perm_tabela[ch]) == 0:
+                        del self.perm_tabela[ch]
+                
+                elif todos:
+                    del self.perm_tabela[ch]
+    
+    def tem_permissao(self, banco, tabela, perm):
+        if self.admin:
+            return True
+        
+        if tabela is None:
+            if (banco in self.perm_banco) and (perm in self.perm_banco[banco]):
+                return True
+                
+            else:
+                return False
+       
+        else:
+            ch = banco + "." + tabela
             
+            if (banco in self.perm_banco) and (perm in self.perm_banco[banco]): 
+                # Se tenho determinada permissão no banco, tenho na tabela
+                return True
+            
+            if (ch in self.perm_tabela) and (perm in self.perm_tabela[ch]):
+                return True
+                
+            else:
+                return False
+               
+    def acessa_banco(self, banco):
+        if self.admin:
+            return True
+        
+        if (banco in self.perm_banco) and len(self.perm_banco[banco]) != 0:
+            return True
+        
+        for ch in self.perm_tabela.keys():
+            if ch.startswith(banco + "."): 
+                for lp in self.perm_tabela[ch]:
+                    if len(lp) != 0:
+                        return True
+                
+        return False
