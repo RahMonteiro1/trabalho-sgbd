@@ -61,7 +61,7 @@ class Sistema:
                         return resultado
                     
             except Exception as erro: # o programa pode gerar value, key, type e index error, que são subclasses de exception
-                print(f"Operação inválida {erro}")
+                print(f"Operação inválida!\n{erro}")
                 return [False]
                 
     def login(self, nome, senha):
@@ -110,17 +110,19 @@ class Sistema:
     
     def usar_banco(self, cmd):
         nome = cmd["nome"]
-        
-        if nome in self.bancos:
-            self.bc_atual = self.bancos[nome]
-            return
-            
-        else:
+
+        if nome not in self.bancos:
             raise ValueError(f"Banco {nome} não existe")
+
+        if not self.us_atual.acessa_banco(nome):
+            raise ValueError(f"Usuário não tem acesso ao banco {nome}")
+
+        self.bc_atual = self.bancos[nome]
     
     def criar_tabela(self, cmd):
         self.exigir_banco()
-
+        self.autorizar(self.bc_atual.nome, None, "CREATE")
+        
         col = list()
         
         for dic in cmd["colunas"]:
@@ -131,11 +133,16 @@ class Sistema:
     
     def inserir(self, cmd):
         self.exigir_banco()
+        self.autorizar(self.bc_atual.nome, cmd["tabela"], "INSERT")
         
         self.bc_atual.inserir(cmd["tabela"], cmd["valores"])
  
     def selecionar(self, cmd):
         self.exigir_banco()
+        
+        for ntab in cmd["tabelas"]:
+            self.autorizar(self.bc_atual.nome, ntab, "SELECT")
+
         return executar_select(cmd, self.bc_atual.tabelas)
     
     def exigir_adm(self):
@@ -258,4 +265,8 @@ class Sistema:
         return saida  
         
     def autorizar(self, banco, tabela, perm): # perm = PERMissão
-        pass
+        p = self.us_atual.tem_permissao(banco, tabela, perm)
+        if not p:
+            raise ValueError("O usuário não tem permissão para realizar a operação")
+        
+    

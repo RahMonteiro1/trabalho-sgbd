@@ -225,5 +225,136 @@ verificar(
     [False]
 )
 
-# 9. Resumo
+
+# ============================================================
+# 25/11 — Autorização nas operações
+# ============================================================
+
+# 10. Testar operação sem login
+verificar("Logout professor", s.logout(), True)
+
+verificar(
+    "Bloquear consulta sem login",
+    s.consulta("SELECT * FROM alunos"),
+    [False]
+)
+
+# 11. Preparar as tabelas adicionais como Admin
+verificar("Login Admin para preparação", s.login("Admin", "123456"), True)
+
+verificar(
+    "Selecionar universidade como Admin",
+    s.consulta("USE DATABASE universidade"),
+    [True]
+)
+
+verificar(
+    "Criar tabela disciplinas",
+    s.consulta(
+        "CREATE TABLE disciplinas (id INTEGER PRIMARY KEY, nome STRING)"
+    ),
+    [True]
+)
+
+verificar(
+    "Criar tabela matriculas",
+    s.consulta(
+        "CREATE TABLE matriculas (id INTEGER PRIMARY KEY, aluno_id INTEGER)"
+    ),
+    [True]
+)
+
+# 12. Preparar permissões do aluno
+verificar(
+    "Conceder SELECT em alunos",
+    s.consulta("GRANT SELECT ON universidade.alunos TO aluno"),
+    [True]
+)
+
+verificar(
+    "Conceder SELECT em disciplinas",
+    s.consulta("GRANT SELECT ON universidade.disciplinas TO aluno"),
+    [True]
+)
+
+verificar(
+    "Criar usuário sem permissões",
+    s.consulta("CREATE USER visitante IDENTIFIED BY 'visitante123'"),
+    [True]
+)
+
+# 13. Testar acesso ao banco
+verificar("Logout Admin", s.logout(), True)
+
+verificar("Login aluno", s.login("aluno", "aluno123"), True)
+
+verificar(
+    "Permitir USE com permissões em tabelas",
+    s.consulta("USE DATABASE universidade"),
+    [True]
+)
+
+verificar("Logout aluno", s.logout(), True)
+
+verificar("Login visitante", s.login("visitante", "visitante123"), True)
+
+verificar(
+    "Bloquear USE sem permissões",
+    s.consulta("USE DATABASE universidade"),
+    [False]
+)
+
+# 14. Testar operações do aluno
+verificar("Logout visitante", s.logout(), True)
+
+verificar("Login aluno novamente", s.login("aluno", "aluno123"), True)
+
+verificar(
+    "Selecionar universidade novamente",
+    s.consulta("USE DATABASE universidade"),
+    [True]
+)
+
+verificar(
+    "Permitir SELECT em alunos",
+    s.consulta("SELECT * FROM alunos"),
+    []
+)
+
+verificar(
+    "Permitir SELECT em disciplinas",
+    s.consulta("SELECT * FROM disciplinas"),
+    []
+)
+
+verificar(
+    "Bloquear SELECT em matriculas",
+    s.consulta("SELECT * FROM matriculas"),
+    [False]
+)
+
+verificar(
+    "Bloquear SELECT com uma tabela não autorizada",
+    s.consulta("SELECT * FROM alunos, matriculas"),
+    [False]
+)
+
+verificar(
+    "Bloquear INSERT sem permissão",
+    s.consulta("INSERT INTO alunos VALUES (1, 'Ana')"),
+    [False]
+)
+
+verificar(
+    "Bloquear CREATE TABLE sem permissão",
+    s.consulta(
+        "CREATE TABLE teste (id INTEGER PRIMARY KEY)"
+    ),
+    [False]
+)
+
+verificar("Logout final", s.logout(), True)
+
+# 15. Resumo
 resumo()
+
