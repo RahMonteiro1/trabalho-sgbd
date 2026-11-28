@@ -1,5 +1,7 @@
 # Classes que representam dados no banco
 
+import math
+
 tipos = {
     "INTEGER": int,
     "FLOAT": float,
@@ -28,6 +30,31 @@ def compativel(tipo, valor):
     else: 
         return False
 
+def cabe_formato(tipo, valor):
+    if tipo == "STRING":
+        if len(valor.encode("utf-8")) <= 1024:
+            return True
+        
+        else:
+            return False
+        
+    elif tipo == "INTEGER":
+        if valor >= -(2 ** 63) and valor <= (2 ** 63) - 1:
+            return True
+        
+        else:
+            return False
+
+    elif tipo == "FLOAT":
+        if math.isfinite(valor):
+            return True
+        
+        else:
+            return False
+    
+    else:
+        return True
+    
 class Atributo:
     def __init__(self, nome, tipo, pk = False, fk = None):
         self.nome = nome
@@ -92,7 +119,14 @@ class Tabela:
                raise TypeError(f"Tentativa de converter {valores[i]} para {self.atributos[i].tipo}")
             
             else:
-                convertidos.append(tipos.get(self.atributos[i].tipo)(valores[i]))
+                tipo = self.atributos[i].tipo
+                novo = tipos.get(tipo)(valores[i])
+                
+                if not cabe_formato(tipo, novo):
+                    raise ValueError(f"O valor não cabe no formato de armazenamento ({tipo})")
+                
+                else:
+                    convertidos.append(novo)
                 
         return convertidos           
         

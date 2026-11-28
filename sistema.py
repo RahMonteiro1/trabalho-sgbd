@@ -3,6 +3,7 @@
 from modelos import *
 from interpretador import interpretar
 from motor_selects import executar_select
+from persistencia import salvar_arquivo, carregar_arquivo
 
 class Sistema:
     def __init__(self):
@@ -91,11 +92,25 @@ class Sistema:
             return True
 
     def salvar(self, path): # path = caminho dos arquivos
-        pass
-    
-    def carregar(self, path):
-        pass
+        try:
+            salvar_arquivo(path, self.bancos, self.usuarios)
+            return True
         
+        except Exception as erro:
+            print(f"Erro ao salvar o sistema: {erro}")
+            return False
+
+    def carregar(self, path):
+        try:
+            self.bancos, self.usuarios = carregar_arquivo(path)
+            self.bc_atual = None
+            self.us_atual = None
+            return True
+        
+        except Exception as erro:
+            print(f"Erro ao carregar o sistema: {erro}")
+            return False
+
     def criar_banco(self, cmd): # cmd = CoManDo SQL já interpretado (em dicionário)
         self.exigir_adm()
         
@@ -178,8 +193,14 @@ class Sistema:
         if nome in self.usuarios:
             raise ValueError("Usuário já existe")
         
+        elif not cabe_formato("STRING", nome):
+            raise ValueError("Campo 'nome' excede o tamanho máximo permitido")
+        
         elif not senha:
             raise ValueError("Campo 'senha' está vazio")
+        
+        elif not cabe_formato("STRING", senha):
+            raise ValueError("Campo 'senha' excede o tamanho máximo permitido")
         
         else:
             self.usuarios[nome] = Usuario(nome, senha, False)

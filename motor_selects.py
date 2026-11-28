@@ -296,7 +296,11 @@ def agregar(linhas, itens, colunas, group_by, lista_tabelas):
     grupos = {}
     
     if chave is None:
-        grupos[None] = linhas
+        if len(linhas) == 0:
+            return []
+        
+        else:
+            grupos[None] = linhas
     
     else:
         for linha in linhas:
